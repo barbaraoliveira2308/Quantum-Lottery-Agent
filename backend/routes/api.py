@@ -6,6 +6,8 @@ from qiskit_aer import AerSimulator
 from flask import Blueprint, request, jsonify
 from collections import Counter
 import itertools
+from .quantum_experimental import run_quantum_experimental
+from .simulation_engine import build_simulation_report
 
 
 api = Blueprint('api', __name__)
@@ -415,3 +417,133 @@ def get_analysis():
     }
 
     return jsonify(result), 200
+
+@api.route('/simulate', methods=['POST'])
+def simulate():
+    global df
+
+    if df is None or df.empty:
+        return jsonify({
+            'error': 'Carregue um ficheiro CSV primeiro'
+        }), 400
+
+    try:
+        payload = request.get_json(silent=True) or {}
+
+        num_simulations = int(
+            payload.get('num_simulations', 10000)
+        )
+
+        top_k = int(
+            payload.get('top_k', 20)
+        )
+
+        test_draws = int(
+            payload.get('test_draws', 20)
+        )
+
+        simulations_per_draw = int(
+            payload.get('simulations_per_draw', 2000)
+        )
+
+        report = build_simulation_report(
+            data=df,
+            num_simulations=num_simulations,
+            top_k=top_k,
+            test_draws=test_draws,
+            simulations_per_draw=simulations_per_draw,
+            date_col=DATE_COL,
+        )
+
+        return jsonify(report), 200
+
+    except ValueError as error:
+        return jsonify({
+            'error': f'Parâmetro inválido: {str(error)}'
+        }), 400
+
+    except Exception as error:
+        import traceback
+
+        traceback.print_exc()
+
+        return jsonify({
+            'error': f'Erro na simulação: {str(error)}'
+        }), 500
+        
+@api.route(
+    '/quantum-experimental',
+    methods=['POST']
+)
+def quantum_experimental():
+    global df
+
+    if df is None or df.empty:
+        return jsonify({
+            'error': (
+                'Carregue um ficheiro CSV '
+                'primeiro.'
+            )
+        }), 400
+
+    try:
+        payload = request.get_json(
+            silent=True
+        ) or {}
+
+        top_k = int(
+            payload.get('top_k', 20)
+        )
+
+        quantum_shots = int(
+            payload.get('quantum_shots', 10000)
+        )
+
+        candidate_count = int(
+            payload.get('candidate_count', 5000)
+        )
+
+        random_seed = payload.get(
+            'random_seed',
+            None,
+        )
+
+        weekday = payload.get(
+            'weekday',
+            'friday',
+        )
+
+        if weekday not in [
+            'tuesday',
+            'friday',
+        ]:
+            weekday = 'friday'
+
+        result = run_quantum_experimental(
+            data=df,
+            top_k=top_k,
+            quantum_shots=quantum_shots,
+            candidate_count=candidate_count,
+            random_seed=random_seed,
+            date_col=DATE_COL,
+            weekday=weekday,
+        )
+
+        return jsonify(result), 200
+
+    except ValueError as error:
+        return jsonify({
+            'error': f'Parâmetro inválido: {str(error)}'
+        }), 400
+
+    except Exception as error:
+        import traceback
+
+        traceback.print_exc()
+
+        return jsonify({
+            'error': (
+                'Erro no modo quântico experimental: '
+                f'{str(error)}'
+            )
+        }), 500
