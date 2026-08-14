@@ -6,11 +6,11 @@ from qiskit_aer import AerSimulator
 
 from .simulation_engine import (
     _combination_score,
+    backtest_model,
     build_feature_model,
     calculate_number_scores,
     calculate_star_scores,
 )
-
 def _run_uniform_quantum_sampler(
     num_qubits,
     shots,
@@ -256,6 +256,84 @@ def _get_weekday_model(
         data=weekday_data,
         date_col=date_col,
     )
+    
+    
+def _add_frequency_based_candidates(
+    candidates,
+    model,
+    weekday_model,
+):
+    """
+    Adiciona combinações baseadas nos Top 10 números
+    globais e nos Top 10 números do dia da semana.
+    """
+    global_numbers = [
+        number
+        for number, _ in
+        model['number_frequency'].most_common(10)
+    ]
+
+    weekday_numbers = [
+        number
+        for number, _ in
+        weekday_model[
+            'number_frequency'
+        ].most_common(10)
+    ]
+
+    global_stars = [
+        star
+        for star, _ in
+        model['star_frequency'].most_common(6)
+    ]
+
+    weekday_stars = [
+        star
+        for star, _ in
+        weekday_model[
+            'star_frequency'
+        ].most_common(6)
+    ]
+
+    number_pools = [
+        global_numbers,
+        weekday_numbers,
+    ]
+
+    star_pools = [
+        global_stars,
+        weekday_stars,
+    ]
+
+    for number_pool in number_pools:
+        if len(number_pool) < 5:
+            continue
+
+        for number_combination in combinations(
+            number_pool,
+            5,
+        ):
+            numbers = tuple(
+                sorted(number_combination)
+            )
+
+            for star_pool in star_pools:
+                if len(star_pool) < 2:
+                    continue
+
+                for star_combination in combinations(
+                    star_pool,
+                    2,
+                ):
+                    stars = tuple(
+                        sorted(star_combination)
+                    )
+
+                    candidates.add(
+                        (numbers, stars)
+                    )
+
+    return candidates    
 
 
 def run_quantum_experimental(
@@ -266,6 +344,9 @@ def run_quantum_experimental(
     random_seed=None,
     date_col='date',
     weekday='friday',
+    test_draws=10,
+    simulations_per_draw=500,
+    run_backtest=True,
 ):
     """
     Modo quântico experimental em duas fases:
@@ -461,6 +542,9 @@ def run_quantum_experimental(
         })
 
     return {
+        
+        
+        
         'mode': 'quantum_experimental',
 
         'simulation': {
