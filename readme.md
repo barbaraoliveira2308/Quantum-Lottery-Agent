@@ -1,3 +1,20 @@
+## Stack do projeto
+
+### Backend
+- Python
+- Flask
+- Qiskit
+
+### Frontend
+- React
+- JavaScript
+- Vite
+
+## Estrutura
+
+- `backend/`: API, regras de negócio e processamento quântico
+- `frontend/`: interface web em React
+
 # Quantum Lottery Agent
 
 Quantum computing-based lottery prediction system for Euromillions.
